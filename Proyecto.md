@@ -1,5 +1,6 @@
 ---
 title: Sistema de monitoreo para pacientes en hemodiálisis
+subtitle: Sistemas de tiempo real
 author: Erick Lievana Poy
 geometry:
 - margin=1in
@@ -153,9 +154,9 @@ Al tratarse de un sistema de tiempo real, ambientado en el uso médico el sistem
 
     Para poder cumplir sus objetivos el sistema debe poder ser manufacturado a un bajo costo y ser compatible con decenas sino cientos de sistemas de monitoreo y hemodiálisis distintos. Ademas de poder ser adaptable a los sistemas de control electronicos de los hospitales y clinicas.
 
-## Diseño
+# Diseño
 
-### Hardware
+## Hardware
 
 Para cumplir con la escalabilidad desea del sistema se usara:
 
@@ -166,7 +167,7 @@ Para cumplir con la escalabilidad desea del sistema se usara:
     * Dispositivos de conexión para redes (Ethernet/WIFI)
     * Bateria de reserva
 
-### Software
+## Software
 
 Para mantener un costo bajo, se optara por el uso de programas y dependencias de codigo abierto. Asi mismo para poder realizar multiples tareas de manera eficaz pero manteniendo requerimientos bajos, se optara por usar un lenguaje como C para la implementación de la logica, ademas de que debido al gran tiempo que lleva este lenguaje en el mercado se han desarrollado cientos de librerias que ayudaran tanto a la lectura de datos, la interpretación de datos, asi como poder proporcionar el reporte final en distintos formatos.
 
@@ -180,11 +181,11 @@ Para mantener un costo bajo, se optara por el uso de programas y dependencias de
     * [libmicrohttpd](https://www.gnu.org/software/libmicrohttpd/)
     * [AppArmor](https://apparmor.net/)
 
-### Tipo de sistema de tiempo real
+## Tipo de sistema de tiempo real
 
 El sistema es un sistema de tiempo real estricto, ya que es absolutamente necesario que la lectura de datos, su interpretación asi como la decisión de activar la notificación/alarma, sea siempre precisa y dentro del tiempo determinado. Ya que la demora o completa falta de una alarma puede llevar a la perdida de vida del paciente.
 
-### Arquitectura
+## Arquitectura
 
 Debido a que el sistema debe de realizar multiples tareas al mismo tiempo, y no todas estas estan relacionadas se optara por una arquitectura Master-Slave. Este patrón consiste en dos grupos, el primero es llamado el maestro (master) y el otro el grupo de esclavos (slaves). Los esclavos realizan la tarea propuesta por el maestro, computan los resultados y los envían de nuevo a este, quien los presenta, almacena o procesa. Esto se realiza así para tener una parte que autoriza y dirige los cálculos necesarios y otras partes que lo procesan de manera agnóstica a estas decisiones.
 
@@ -193,12 +194,92 @@ Debido a que el sistema debe de realizar multiples tareas al mismo tiempo, y no 
     * Control - Al partir todas las tareas de un único nodo orquestador, se mantiene mayor control ya que las tareas se ejecutan de manera independiente y reciben el contexto y su procesamiento final de un único punto de la ejecución.
     * Escalabilidad - Al ser todas las tareas ejecutadas independientes las unas de las otras es posible escalar fácilmente el sistema de forma que añadir nuevos nodos esclavos se termine traduciendo en un más que posible aumento del rendimiento.
 
-### Diseño conceptual
+## Diseño conceptual
 
 ![Diseño Conceptual](disenoConceptual.png)
 
-### Diagrama de contexto
+El diseño es sencillo, para poder reducir costos, se tratara de construir el sistema con la menor cantidad de elementos, mientras se trata de mantener una compatibilidad alta con los distintos equipos medicos. Como se menciono en el apartado de hardware. El sistema contara con:
 
-![Diseño Contexto](diagramaContexto.png)
+* Bateria de respaldo, esto para poder continuar con su funcionamiento aun en el caso de corte de energia.
+* Entradas para conectar los distintos dispositivos medicos. se usara por default la entrada mas común con la opción de poder agregar adaptadores externos en caso de necesidad
+* Display led, para poder interactuar con el sistema sin la necesidad de otros periféricos
+* Conexiones de red, tanto alambricas como inalambricas para poder tener comunicación con sistemas de Bases de Datos, notificaciones y alarmas
+* Conexiones I/O, usb, hdmi, etc. esto para poder interactuar con el dispositivo a traves de perifericos
 
-### 
+## Diagrama de contexto
+
+![Diagrama de Contexto](diagramaContexto.png)
+
+El objetivo es que el sistema sea lo mas independiente posible, que pueda adaptarse a cualquiera sea la configuración de la terapia de hemodiálisis. Es por esto que el sistema solo tomara los datos que provienen de los sistemas de monitoreo ya existentes e interpretarlos y toma una decisión sobre si el paciente requiere o no atencion médica durante su tratamiento. Es por esto que el sistema no tiene sensores por si mismo y depende de los sistemas externos ya incorporados.
+
+## Diagrama de estado
+
+![Diagrama de Estado](diagramaEstado.png)
+
+El sistema cuenta con pocos estados y esto es por diseño, agregar mas estados requeriria que el sistema tuviera mas poder de procesamiento lo cual aumentaria sus costos ademas de incrementar los posibles puntos de falla, esto ultimo siendo de gran importancia, ya que la falla o demora de cualquiera de estos estados puede ser fatal para el paciente.
+
+## Diagrama de secuencia
+
+El sistema cuenta con 2 modos principales. Su modo de terapia y su modo de prueba, ambos de igual relevancia, ya que es necesario que el sistema siempre funcione de manera correcta y una de las mejores formas de conseguirlo es comprobando sus componentes de manera periodica.
+
+En el primer diagrama de secuencia podemos ver como es el proceso de de una terapia, que retroalimentacion se ofrece al usuario y como este interactua con todo el sistema.
+
+![Diagrama de Secuencia de terapia](diagramaSecuencia1.png)
+
+En el segundo diagrama de secuencia podemos ver el proceso sencillo de prueba para poder dar mantenimiento al sistema.
+
+![Diagrama de Secuencia de modo prueba](diagramaSecuencia2.png)
+
+## Diagrama de Actividad
+
+Podemos entender los distintos puntos donde el flujo del sistema se divide y como estos son necesarios en cada paso. Con este grafico podemos ver cuales serian los puntos donde el error humano es mas alto y que puntos requieren seguridad o fiabilidad redundante.
+
+![Diagrama de Actividad](diagramaActividad.png)
+
+## Medidas de tolerancia a fallos
+
+Dado que el sistema es orientado a un aspecto del área de salud, es necesario que su funcionamiento sea impecable, ya que su falla puede llevar a la perdida de vidas humanas. Como primer punto se debe de reconocer cuales son las posibles fallas que el sistema podrias presentar.
+
+* Hardware
+    * Falla de corriente electrica
+    * Falla de conectores
+    * Falla de componentes
+    * Falla de cables
+    * Interferencias
+
+* Software
+    * Error de lectura
+    * Error de interpretación
+    * Error de memoria
+    * Error de tiempo
+    * Error de conexión
+
+Podemos clasificar nuestros fallos en 2 categorias:
+
+* Fallos de frecuencia: permanentes, intermitentes y transitorios
+* Fallos de dominio: tiempo y valor
+
+Para poder evitar estos fallos el sistema debe diseñarse teniendo en cuenta:
+
+* Confiabilidad y estabilidad del hardware
+* Aislamiento de hardware para evitar interferencia
+* Estabilidad del software
+* Redundancia de modulos
+
+El asegurar la confiabilidad y estabilidad del hardware, es la parte sencilla de este proceso ya que se puede consultar las distintas fichas técnicas, asi como reseñas de los distintos dispositivos para hacer la elección mas apropiada. Asi mismo el aislamiento del hardware, es algo que ya ha sido puesto a prueba en el pasado y del cual ya se tiene información, por ejemplo en el caso que se decida por una cobertura en impresión 3D, ya hay estudios sobre filamentos y diseños para poder crear un elemento resistente sin aumentar costos.
+
+Para asegurar la estabilidad del software, hacemos uso de nuestra arquitectura de software, de maestro y esclavos, para poder tener una redundancia dinámica a traves de la programación de N-versiones, para procesar los datos recibidos en paralelo y tener redundancia no solo con el tiempo sino con el valor de la entrega
+
+## Algoritmo de planificación
+
+Ya que todos los procesos del sistema son importantes, se ha decidido por implementar el algoritmo de planificación Round Robin esto por que es un método que permite que todos los procesos se dividan el tiempo de procesamiento de manera equitativa y en un orden racional, normalmente comenzando por el primer elemento de la lista hasta llegar al último y empezando de nuevo desde el primer elemento.
+
+Se define un intervalo de tiempo denominado cuanto, cuya duración varía según el sistema. La cola de procesos se estructura como una cola circular. El planificado la recorre asignando un cuanto de tiempo a cada proceso. Asi mismo esta estructura de cola circular permite con facilidad implementar los distintos bucles aprovechando la propia redundancia del algoritmo Round Robin
+
+# Bibliográfia
+
+* Alcalde-Bezhold, G., Alcázar-Arroyo, R., Angoso-de-Guzmán, M., Arenas, M. D., Arias-Guillén, M., Arribas-Cobo, P., ... & Molina, F. T. (2021). Guía de unidades de hemodiálisis 2020. Nefrología, 41, 1-77.
+* Tirado-Gómez, L. L., Durán-Arenas, J. L., Rojas-Russell, M. E., Venado-Estrada, A., Pacheco-Domínguez, R. L., & López-Cervantes, M. (2011). Las unidades de hemodiálisis en México: una evaluación de sus características, procesos y resultados. salud pública de méxico, 53(suppl 4), 491-498.
+* Moyano, L. J. H. Clase 04: Arquitecturas de Software Embebido.
+* Factor, M., Sittig, D. F., Cohn, A. I., Gelernter, D., Miller, P. L., & Rosenbaum, S. H. (1990). A parallel software architecture for building intelligent medical monitors. International journal of clinical monitoring and computing, 7, 117-128.
+* Jurik, A. D., & Weaver, A. C. (2008). Remote medical monitoring. Computer, 41(4), 96-99.
